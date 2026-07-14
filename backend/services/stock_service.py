@@ -142,16 +142,22 @@ class StockService:
                 ticker=ticker,
             )
 
-        price = self._resolve_current_price(yf_ticker, history_frame, ticker)
-        company_name = self._resolve_company_name(yf_ticker, ticker)
+        # Chart/history metadata is more reliable on cloud hosts than .info
+        # (Yahoo often blocks quoteSummary from datacenter IPs).
+        history_meta = self._safe_history_metadata(yf_ticker)
+        info = self._safe_info(yf_ticker)
+
+        price = self._resolve_current_price(yf_ticker, history_frame, ticker, info)
+        company_name = self._resolve_company_name(history_meta, info, ticker)
         daily_change, daily_change_percent = self._resolve_daily_change(
             price,
             history_frame,
             yf_ticker,
+            info,
         )
         history = self._build_history(history_frame)
         quote = self._build_quote_stats(history_frame)
-        company = self._build_company_info(yf_ticker)
+        company = self._build_company_info(history_meta, info)
 
         return {
             "price": price,
@@ -168,12 +174,13 @@ class StockService:
         yf_ticker: yf.Ticker,
         history_frame: pd.DataFrame,
         ticker: str,
+        info: dict[str, Any],
     ) -> float:
         price = self._extract_fast_price(yf_ticker)
         if price is not None:
             return price
 
-        price = self._extract_info_price(yf_ticker)
+        price = self._extract_info_price(info)
         if price is not None:
             return price
 
@@ -193,14 +200,32 @@ class StockService:
         return float(latest_close.iloc[-1])
 
     @staticmethod
-    def _resolve_company_name(yf_ticker: yf.Ticker, ticker: str) -> str:
+    def _safe_history_metadata(yf_ticker: yf.Ticker) -> dict[str, Any]:
         try:
-            info: dict[str, Any] = yf_ticker.info or {}
+            metadata = getattr(yf_ticker, "history_metadata", None) or {}
+            return metadata if isinstance(metadata, dict) else {}
         except Exception:
-            return ticker
+            return {}
 
+    @staticmethod
+    def _safe_info(yf_ticker: yf.Ticker) -> dict[str, Any]:
+        try:
+            info = yf_ticker.info or {}
+            return info if isinstance(info, dict) else {}
+        except Exception:
+            logger.warning("Yahoo .info unavailable for ticker=%s", yf_ticker.ticker)
+            return {}
+
+    @staticmethod
+    def _resolve_company_name(
+        history_meta: dict[str, Any],
+        info: dict[str, Any],
+        ticker: str,
+    ) -> str:
         return (
-            info.get("longName")
+            history_meta.get("longName")
+            or history_meta.get("shortName")
+            or info.get("longName")
             or info.get("shortName")
             or info.get("displayName")
             or ticker
@@ -211,8 +236,9 @@ class StockService:
         price: float,
         history_frame: pd.DataFrame,
         yf_ticker: yf.Ticker,
+        info: dict[str, Any],
     ) -> tuple[float, float]:
-        previous_close = self._extract_previous_close(yf_ticker, history_frame)
+        previous_close = self._extract_previous_close(yf_ticker, history_frame, info)
 
         if previous_close is None or previous_close == 0:
             return 0.0, 0.0
@@ -226,6 +252,7 @@ class StockService:
     def _extract_previous_close(
         yf_ticker: yf.Ticker,
         history_frame: pd.DataFrame,
+        info: dict[str, Any],
     ) -> float | None:
         try:
             fast_info: dict[str, Any] = getattr(yf_ticker, "fast_info", {}) or {}
@@ -237,13 +264,11 @@ class StockService:
         except Exception:
             pass
 
-        try:
-            info: dict[str, Any] = yf_ticker.info or {}
-            previous_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
-            if previous_close is not None:
-                return float(previous_close)
-        except Exception:
-            pass
+        previous_close = info.get("previousClose") or info.get(
+            "regularMarketPreviousClose"
+        )
+        if previous_close is not None:
+            return float(previous_close)
 
         if "Close" not in history_frame.columns:
             return None
@@ -269,12 +294,7 @@ class StockService:
         return None
 
     @staticmethod
-    def _extract_info_price(yf_ticker: yf.Ticker) -> float | None:
-        try:
-            info: dict[str, Any] = yf_ticker.info or {}
-        except Exception:
-            return None
-
+    def _extract_info_price(info: dict[str, Any]) -> float | None:
         for key in ("currentPrice", "regularMarketPrice", "previousClose"):
             value = info.get(key)
             if value is not None:
@@ -302,14 +322,17 @@ class StockService:
         )
 
     @staticmethod
-    def _build_company_info(yf_ticker: yf.Ticker) -> CompanyInfo:
-        try:
-            info: dict[str, Any] = yf_ticker.info or {}
-        except Exception:
-            return CompanyInfo()
-
+    def _build_company_info(
+        history_meta: dict[str, Any],
+        info: dict[str, Any],
+    ) -> CompanyInfo:
         employees = info.get("fullTimeEmployees")
         market_cap = info.get("marketCap")
+        exchange = (
+            info.get("exchange")
+            or history_meta.get("exchangeName")
+            or history_meta.get("fullExchangeName")
+        )
 
         return CompanyInfo(
             sector=info.get("sector"),
@@ -319,7 +342,7 @@ class StockService:
             market_cap=float(market_cap) if market_cap is not None else None,
             employees=int(employees) if employees is not None else None,
             country=info.get("country"),
-            exchange=info.get("exchange"),
+            exchange=exchange,
         )
 
     @staticmethod
