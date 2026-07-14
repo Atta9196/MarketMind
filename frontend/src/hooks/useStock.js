@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchStock } from '../services/stockService'
 import { useInterval } from './useInterval'
-import { resolvePriceDirection } from '../components/LivePriceBadge'
+import { resolvePriceDirection } from '../utils/market'
 
 export function useStock(
   ticker,

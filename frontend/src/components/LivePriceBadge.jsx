@@ -30,27 +30,3 @@ export default function LivePriceBadge({
     </span>
   )
 }
-
-/**
- * Resolve badge direction from a tick update and/or daily change.
- */
-export function resolvePriceDirection({
-  previousPrice,
-  currentPrice,
-  dailyChange,
-}) {
-  if (
-    previousPrice !== undefined &&
-    previousPrice !== null &&
-    currentPrice !== previousPrice
-  ) {
-    return currentPrice > previousPrice ? 'up' : 'down'
-  }
-
-  if (typeof dailyChange === 'number') {
-    if (dailyChange > 0) return 'up'
-    if (dailyChange < 0) return 'down'
-  }
-
-  return 'flat'
-}

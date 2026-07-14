@@ -7,9 +7,13 @@ import {
 } from '../constants'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useStockList } from '../hooks/useStockList'
-import { formatLastUpdated, getMarketStatus } from '../utils/market'
+import {
+  formatLastUpdated,
+  getMarketStatus,
+  resolvePriceDirection,
+} from '../utils/market'
 import CompanyLogo from '../components/CompanyLogo'
-import LivePriceBadge, { resolvePriceDirection } from '../components/LivePriceBadge'
+import LivePriceBadge from '../components/LivePriceBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function Watchlist() {

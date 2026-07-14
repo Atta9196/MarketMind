@@ -209,64 +209,6 @@ def _binomial_tree_price_worker(payload: dict[str, Any]) -> float:
     )
 
 
-def monte_carlo_price(
-    spot_price: float,
-    strike_price: float,
-    time_to_expiration_years: float,
-    risk_free_rate: float,
-    volatility: float,
-    option_type: OptionType | str,
-    simulations: int,
-    seed: int | None = None,
-    workers: int | None = None,
-) -> float:
-    import numpy as np
-
-    if time_to_expiration_years <= 0:
-        return _intrinsic_value(spot_price, strike_price, option_type)
-
-    if simulations < 1:
-        raise OptionsValidationError("Monte Carlo simulations must be at least 1.")
-
-    option_type_value = (
-        option_type.value if isinstance(option_type, Enum) else str(option_type)
-    )
-    worker_count = _worker_count(workers, simulations)
-    chunk_sizes = _split_simulation_counts(simulations, worker_count)
-
-    chunk_payloads = [
-        {
-            "spot_price": spot_price,
-            "strike_price": strike_price,
-            "time_to_expiration_years": time_to_expiration_years,
-            "risk_free_rate": risk_free_rate,
-            "volatility": volatility,
-            "option_type": option_type_value,
-            "simulations": chunk_size,
-            "seed": None if seed is None else seed + index,
-        }
-        for index, chunk_size in enumerate(chunk_sizes)
-    ]
-
-    if len(chunk_payloads) == 1:
-        payoff_arrays = [_monte_carlo_payoffs_chunk(chunk_payloads[0])]
-    else:
-        with Pool(processes=len(chunk_payloads)) as pool:
-            payoff_arrays = pool.map(_monte_carlo_payoffs_chunk, chunk_payloads)
-
-    all_payoffs = np.asarray(
-        [payoff for chunk in payoff_arrays for payoff in chunk],
-        dtype=float,
-    )
-    if all_payoffs.size == 0:
-        return 0.0
-
-    discounted = _exp(-risk_free_rate * time_to_expiration_years) * float(
-        np.mean(all_payoffs)
-    )
-    return max(discounted, 0.0)
-
-
 def price_binomial_and_monte_carlo_parallel(
     *,
     spot_price: float,

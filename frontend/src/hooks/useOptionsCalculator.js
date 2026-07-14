@@ -102,13 +102,6 @@ export function useOptionsCalculator() {
     })
   }, [])
 
-  const reset = useCallback(() => {
-    setResult(null)
-    setError(null)
-    setFieldErrors({})
-    setHasCalculated(false)
-  }, [])
-
   return {
     result,
     loading,
@@ -117,7 +110,6 @@ export function useOptionsCalculator() {
     hasCalculated,
     calculate,
     clearFieldError,
-    reset,
     defaultExpirationDate,
   }
 }

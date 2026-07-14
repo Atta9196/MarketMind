@@ -27,3 +27,24 @@ export function formatLastUpdated(date) {
 
   return `Last updated: ${formatted} ET`
 }
+
+export function resolvePriceDirection({
+  previousPrice,
+  currentPrice,
+  dailyChange,
+}) {
+  if (
+    previousPrice !== undefined &&
+    previousPrice !== null &&
+    currentPrice !== previousPrice
+  ) {
+    return currentPrice > previousPrice ? 'up' : 'down'
+  }
+
+  if (typeof dailyChange === 'number') {
+    if (dailyChange > 0) return 'up'
+    if (dailyChange < 0) return 'down'
+  }
+
+  return 'flat'
+}
