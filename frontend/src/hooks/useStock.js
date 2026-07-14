@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchStock } from '../services/stockService'
 import { useInterval } from './useInterval'
-import { resolvePriceDirection } from '../utils/market'
 
 export function useStock(
   ticker,
@@ -15,14 +14,15 @@ export function useStock(
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [priceDirection, setPriceDirection] = useState('flat')
-  const previousPriceRef = useRef(undefined)
+  const requestIdRef = useRef(0)
 
   const load = useCallback(
     async (isRefresh = false) => {
       if (!ticker || !enabled) {
         return
       }
+
+      const requestId = ++requestIdRef.current
 
       if (!isRefresh) {
         setLoading(true)
@@ -31,34 +31,30 @@ export function useStock(
 
       try {
         const stock = await fetchStock(ticker, { period, interval })
-
-        setPriceDirection(
-          resolvePriceDirection({
-            previousPrice: previousPriceRef.current,
-            currentPrice: stock.price,
-            dailyChange: stock.daily_change,
-          }),
-        )
-        previousPriceRef.current = stock.price
+        if (requestId !== requestIdRef.current) {
+          return
+        }
         setData(stock)
         setError(null)
       } catch (err) {
+        if (requestId !== requestIdRef.current) {
+          return
+        }
         if (!isRefresh) {
           setData(null)
-          setPriceDirection('flat')
-          previousPriceRef.current = undefined
         }
         setError(err.message)
       } finally {
-        setLoading(false)
+        if (requestId === requestIdRef.current) {
+          setLoading(false)
+        }
       }
     },
     [ticker, enabled, period, interval],
   )
 
   useEffect(() => {
-    previousPriceRef.current = undefined
-    setPriceDirection('flat')
+    setData(null)
     load(false)
   }, [load])
 
@@ -71,5 +67,5 @@ export function useStock(
     enabled && refreshInterval ? refreshInterval : null,
   )
 
-  return { data, loading, error, priceDirection, reload: () => load(false) }
+  return { data, loading, error, reload: () => load(false) }
 }

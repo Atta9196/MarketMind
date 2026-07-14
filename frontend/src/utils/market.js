@@ -48,3 +48,41 @@ export function resolvePriceDirection({
 
   return 'flat'
 }
+
+/** True when a poll returns a different price than the last known value. */
+export function didPriceUpdate(previousPrice, currentPrice) {
+  return (
+    previousPrice !== undefined &&
+    previousPrice !== null &&
+    typeof currentPrice === 'number' &&
+    currentPrice !== previousPrice
+  )
+}
+
+/** Yahoo Mic codes → display labels used in the UI. */
+const EXCHANGE_LABELS = {
+  NMS: 'NASDAQ',
+  NGM: 'NASDAQ',
+  NCM: 'NASDAQ',
+  NAS: 'NASDAQ',
+  NYQ: 'NYSE',
+  PCX: 'NYSE Arca',
+  ASE: 'NYSE American',
+  BATS: 'Cboe BZX',
+}
+
+export function formatExchangeLabel(exchange) {
+  if (!exchange) {
+    return null
+  }
+
+  const key = String(exchange).trim().toUpperCase()
+  return EXCHANGE_LABELS[key] || exchange
+}
+
+export function formatExchangeSector(exchange, sector) {
+  const parts = [formatExchangeLabel(exchange), sector].filter(Boolean)
+  return parts.length ? parts.join(' · ') : '—'
+}
+
+export const PRICE_FLASH_MS = 1600

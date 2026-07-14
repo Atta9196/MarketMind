@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DEFAULT_WATCHLIST,
@@ -7,11 +7,8 @@ import {
 } from '../constants'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useStockList } from '../hooks/useStockList'
-import {
-  formatLastUpdated,
-  getMarketStatus,
-  resolvePriceDirection,
-} from '../utils/market'
+import { usePriceFlashMap } from '../hooks/usePriceFlash'
+import { formatLastUpdated, getMarketStatus } from '../utils/market'
 import CompanyLogo from '../components/CompanyLogo'
 import LivePriceBadge from '../components/LivePriceBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -20,14 +17,14 @@ export default function Watchlist() {
   const navigate = useNavigate()
   const { tickers, resetToDefaults } = useWatchlist()
   const [lastUpdated, setLastUpdated] = useState(null)
-  const [priceDirections, setPriceDirections] = useState({})
-  const prevPricesRef = useRef({})
   const marketStatus = getMarketStatus()
 
   const { stocks, loading, refreshing, connectionError, reload } = useStockList(tickers, {
     enabled: tickers.length > 0,
     refreshInterval: WATCHLIST_REFRESH_INTERVAL_MS,
   })
+
+  const flashing = usePriceFlashMap(stocks)
 
   useEffect(() => {
     if (!localStorage.getItem(WATCHLIST_SEEDED_KEY)) {
@@ -37,24 +34,9 @@ export default function Watchlist() {
   }, [resetToDefaults])
 
   useEffect(() => {
-    if (!stocks.length) {
-      return
+    if (stocks.length) {
+      setLastUpdated(new Date())
     }
-
-    setLastUpdated(new Date())
-
-    const nextDirections = {}
-    stocks.forEach((stock) => {
-      const previous = prevPricesRef.current[stock.ticker]
-      nextDirections[stock.ticker] = resolvePriceDirection({
-        previousPrice: previous,
-        currentPrice: stock.price,
-        dailyChange: stock.daily_change,
-      })
-      prevPricesRef.current[stock.ticker] = stock.price
-    })
-
-    setPriceDirections((current) => ({ ...current, ...nextDirections }))
   }, [stocks])
 
   const rows = useMemo(
@@ -158,32 +140,29 @@ export default function Watchlist() {
             </button>
           </div>
         ) : (
-        <table className="w-full min-w-[280px] text-left">
-          <thead>
-            <tr className="border-b border-[#1e293b]">
-              <th className="pb-3 pr-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b] sm:pr-4">
-                Symbol
-              </th>
-              <th className="hidden pb-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b] sm:table-cell">
-                Company
-              </th>
-              <th className="pb-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">
-                Price
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && stocks.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="py-16">
-                  <LoadingSpinner label="Loading watchlist..." size="sm" />
-                </td>
+          <table className="w-full min-w-[280px] text-left">
+            <thead>
+              <tr className="border-b border-[#1e293b]">
+                <th className="pb-3 pr-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b] sm:pr-4">
+                  Symbol
+                </th>
+                <th className="hidden pb-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b] sm:table-cell">
+                  Company
+                </th>
+                <th className="pb-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">
+                  Price
+                </th>
               </tr>
-            ) : (
-              rows.map(({ ticker, stock }) => {
-                const direction = priceDirections[ticker] || 'flat'
-
-                return (
+            </thead>
+            <tbody>
+              {loading && stocks.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-16">
+                    <LoadingSpinner label="Loading watchlist..." size="sm" />
+                  </td>
+                </tr>
+              ) : (
+                rows.map(({ ticker, stock }) => (
                   <tr
                     key={ticker}
                     onClick={() => stock && navigate(`/stock/${ticker}`)}
@@ -200,50 +179,49 @@ export default function Watchlist() {
                         <div className="min-w-0">
                           <span className="block text-sm font-bold text-white">{ticker}</span>
                           <span className="mt-0.5 block truncate text-xs text-[#94a3b8] sm:hidden">
-                            {stock?.company_name || '—'}
+                            {stock?.company_name?.replace(/\.$/, '') || '—'}
                           </span>
                         </div>
                       </div>
                     </td>
                     <td className="hidden py-4 pr-4 text-sm text-[#94a3b8] sm:table-cell">
-                      {stock?.company_name || '—'}
+                      {stock?.company_name?.replace(/\.$/, '') || '—'}
                     </td>
                     <td className="py-3.5 text-right sm:py-4">
                       {stock ? (
                         <LivePriceBadge
                           price={stock.price}
-                          direction={direction}
+                          flashing={Boolean(flashing[ticker])}
                         />
                       ) : (
                         '—'
                       )}
                     </td>
                   </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+                ))
+              )}
+            </tbody>
+          </table>
         )}
       </div>
 
       {!connectionError && (
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-[#64748b] sm:mt-10 sm:gap-6">
-        <div className="flex items-center gap-2">
-          <span
-            className="h-3.5 w-3.5 rounded border border-[#22c55e] bg-[#22c55e]/10 shadow-[0_0_8px_rgba(34,197,94,0.25)]"
-            aria-hidden="true"
-          />
-          <span>Price up</span>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-[#64748b] sm:mt-10 sm:gap-6">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-3.5 w-3.5 rounded border border-[#334155] bg-[#0b1220]"
+              aria-hidden="true"
+            />
+            <span>Standard state</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="h-3.5 w-3.5 rounded border border-[#22c55e] bg-[#22c55e]/10 shadow-[0_0_8px_rgba(34,197,94,0.25)]"
+              aria-hidden="true"
+            />
+            <span>Update flash (price just updated)</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className="h-3.5 w-3.5 rounded border border-[#ef4444] bg-[#ef4444]/10 shadow-[0_0_8px_rgba(239,68,68,0.25)]"
-            aria-hidden="true"
-          />
-          <span>Price down</span>
-        </div>
-      </div>
       )}
     </div>
   )

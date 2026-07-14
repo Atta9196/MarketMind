@@ -124,50 +124,72 @@ select.mm-input {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  border: 1.5px solid #334155;
-  background-color: #0b1220;
+  border: 1.5px solid transparent;
+  background-color: transparent;
   padding: 0.3rem 0.85rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #f8fafc;
   line-height: 1.25;
   transition:
-    border-color 0.25s ease,
-    background-color 0.25s ease,
-    box-shadow 0.25s ease,
-    color 0.25s ease;
+    border-color 0.35s ease,
+    background-color 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
 .mm-live-price-lg {
   border-radius: 10px;
-  padding: 0.4rem 0.85rem;
+  padding: 0.35rem 0.15rem;
   font-size: 1.5rem;
   font-weight: 700;
 }
 
 @media (min-width: 640px) {
   .mm-live-price-lg {
-    padding: 0.45rem 1rem;
+    padding: 0.4rem 0.25rem;
     font-size: 1.875rem;
   }
 }
 
-.mm-live-price-up {
-  border-color: #22c55e;
-  background-color: rgba(34, 197, 94, 0.08);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.28);
-}
-
-.mm-live-price-down {
-  border-color: #ef4444;
-  background-color: rgba(239, 68, 68, 0.08);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.28);
-}
-
-.mm-live-price-flat {
+/* Figma: standard state — quiet bordered chip on the watchlist */
+.mm-live-price-idle {
   border-color: #334155;
   background-color: #0b1220;
   box-shadow: none;
+}
+
+/* Stock detail keeps a quieter idle look (border only on flash). */
+.mm-live-price-lg.mm-live-price-idle {
+  border-color: transparent;
+  background-color: transparent;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+}
+
+/* Figma: update flash when a refreshed price arrives */
+.mm-live-price-flash {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.28);
+  animation: mm-price-flash 1.4s ease-out;
+}
+
+.mm-live-price-lg.mm-live-price-flash {
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+
+@keyframes mm-price-flash {
+  0% {
+    border-color: #4ade80;
+    background-color: rgba(34, 197, 94, 0.18);
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
+  }
+  100% {
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.28);
+  }
 }
 
 .mm-options-card {

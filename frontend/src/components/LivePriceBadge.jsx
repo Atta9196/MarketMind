@@ -1,29 +1,25 @@
 import { formatCurrency } from '../utils/formatters'
 
 /**
- * Live price pill — green border when rising, red when falling.
- * Matches the MarketMinds realtime price badge design.
+ * Live price chip — flashes green when a refreshed price arrives,
+ * then returns to the quiet standard state (Figma realtime design).
  */
 export default function LivePriceBadge({
   price,
-  direction = 'flat',
+  flashing = false,
   size = 'md',
   className = '',
 }) {
-  const tone =
-    direction === 'up' ? 'up' : direction === 'down' ? 'down' : 'flat'
-
   const sizeClass = size === 'lg' ? 'mm-live-price mm-live-price-lg' : 'mm-live-price'
+  const toneClass = flashing ? 'mm-live-price-flash' : 'mm-live-price-idle'
 
   return (
     <span
-      className={`${sizeClass} mm-live-price-${tone} ${className}`.trim()}
+      className={`${sizeClass} ${toneClass} ${className}`.trim()}
       aria-label={
-        direction === 'up'
-          ? `Price up to ${formatCurrency(price)}`
-          : direction === 'down'
-            ? `Price down to ${formatCurrency(price)}`
-            : `Price ${formatCurrency(price)}`
+        flashing
+          ? `Updated price ${formatCurrency(price)}`
+          : `Price ${formatCurrency(price)}`
       }
     >
       {formatCurrency(price)}

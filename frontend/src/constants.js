@@ -9,4 +9,5 @@ export const NAV_LINKS = [
 ]
 
 export const DEFAULT_OPTION_TICKER = 'AAPL'
-export const WATCHLIST_REFRESH_INTERVAL_MS = 15_000
+/** Poll interval for live watchlist + stock detail price refresh. */
+export const WATCHLIST_REFRESH_INTERVAL_MS = 10_000

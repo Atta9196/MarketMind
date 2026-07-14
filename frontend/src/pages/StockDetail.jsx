@@ -2,21 +2,21 @@ import { Link, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { WATCHLIST_REFRESH_INTERVAL_MS } from '../constants'
 import { useStock } from '../hooks/useStock'
+import { usePriceFlash } from '../hooks/usePriceFlash'
 import { normalizeTicker } from '../utils/ticker'
-import { formatLastUpdated, getMarketStatus } from '../utils/market'
+import {
+  formatExchangeSector,
+  formatLastUpdated,
+  getMarketStatus,
+} from '../utils/market'
 import CompanyLogo from '../components/CompanyLogo'
 import LivePriceBadge from '../components/LivePriceBadge'
 import StockDetailChart from '../charts/StockDetailChart'
 import LoadingSpinner from '../components/LoadingSpinner'
 
-function formatExchangeSector(exchange, sector) {
-  const parts = [exchange, sector].filter(Boolean)
-  return parts.length ? parts.join(' · ') : '—'
-}
-
 export default function StockDetail() {
   const { ticker = '' } = useParams()
-  const { data, loading, error, priceDirection, reload } = useStock(ticker, {
+  const { data, loading, error, reload } = useStock(ticker, {
     period: '5d',
     interval: '15m',
     refreshInterval: WATCHLIST_REFRESH_INTERVAL_MS,
@@ -24,6 +24,7 @@ export default function StockDetail() {
   const normalizedTicker = normalizeTicker(ticker)
   const [lastUpdated, setLastUpdated] = useState(null)
   const marketStatus = getMarketStatus()
+  const priceFlashing = usePriceFlash(data?.price)
 
   useEffect(() => {
     if (data) {
@@ -53,6 +54,8 @@ export default function StockDetail() {
     return null
   }
 
+  const companyName = data.company_name?.replace(/\.$/, '') || data.ticker
+
   return (
     <div>
       <Link
@@ -67,8 +70,8 @@ export default function StockDetail() {
           <CompanyLogo ticker={data.ticker} size={44} />
           <div className="min-w-0">
             <p className="text-xl font-bold text-white sm:text-2xl">{data.ticker}</p>
-            <p className="mt-0.5 truncate text-sm font-medium text-white sm:text-base">
-              {data.company_name?.replace(/\.$/, '') || data.ticker}
+            <p className="mt-0.5 truncate text-sm font-medium text-[#94a3b8] sm:text-base">
+              {companyName}
             </p>
             <p className="mt-1 text-xs text-[#64748b] sm:text-sm">
               {formatExchangeSector(data.company?.exchange, data.company?.sector)}
@@ -79,7 +82,7 @@ export default function StockDetail() {
         <div className="flex flex-col items-start gap-2 lg:items-end">
           <LivePriceBadge
             price={data.price}
-            direction={priceDirection}
+            flashing={priceFlashing}
             size="lg"
           />
           <div className="flex flex-wrap items-center gap-3">

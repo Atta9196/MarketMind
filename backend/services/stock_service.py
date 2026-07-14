@@ -46,6 +46,19 @@ ALLOWED_HISTORY_INTERVALS = {
     "1mo",
 }
 
+# Used when Yahoo quoteSummary/.info is blocked (common on cloud hosts).
+FALLBACK_COMPANY_PROFILES: dict[str, dict[str, str]] = {
+    "AAPL": {"sector": "Technology", "industry": "Consumer Electronics"},
+    "NVDA": {"sector": "Technology", "industry": "Semiconductors"},
+    "AMZN": {"sector": "Consumer Cyclical", "industry": "Internet Retail"},
+    "GOOGL": {"sector": "Communication Services", "industry": "Internet Content & Information"},
+    "GOOG": {"sector": "Communication Services", "industry": "Internet Content & Information"},
+    "TSLA": {"sector": "Consumer Cyclical", "industry": "Auto Manufacturers"},
+    "META": {"sector": "Communication Services", "industry": "Internet Content & Information"},
+    "NFLX": {"sector": "Communication Services", "industry": "Entertainment"},
+    "MSFT": {"sector": "Technology", "industry": "Software—Infrastructure"},
+}
+
 
 class StockService:
     """Fetches and normalizes stock market data from Yahoo Finance."""
@@ -157,7 +170,7 @@ class StockService:
         )
         history = self._build_history(history_frame)
         quote = self._build_quote_stats(history_frame)
-        company = self._build_company_info(history_meta, info)
+        company = self._build_company_info(ticker, history_meta, info)
 
         return {
             "price": price,
@@ -222,7 +235,7 @@ class StockService:
         info: dict[str, Any],
         ticker: str,
     ) -> str:
-        return (
+        raw_name = (
             history_meta.get("longName")
             or history_meta.get("shortName")
             or info.get("longName")
@@ -230,6 +243,9 @@ class StockService:
             or info.get("displayName")
             or ticker
         )
+        if isinstance(raw_name, str):
+            return raw_name.rstrip(".")
+        return ticker
 
     def _resolve_daily_change(
         self,
@@ -323,9 +339,11 @@ class StockService:
 
     @staticmethod
     def _build_company_info(
+        ticker: str,
         history_meta: dict[str, Any],
         info: dict[str, Any],
     ) -> CompanyInfo:
+        fallback = FALLBACK_COMPANY_PROFILES.get(ticker.upper(), {})
         employees = info.get("fullTimeEmployees")
         market_cap = info.get("marketCap")
         exchange = (
@@ -335,8 +353,8 @@ class StockService:
         )
 
         return CompanyInfo(
-            sector=info.get("sector"),
-            industry=info.get("industry"),
+            sector=info.get("sector") or fallback.get("sector"),
+            industry=info.get("industry") or fallback.get("industry"),
             website=info.get("website"),
             description=info.get("longBusinessSummary"),
             market_cap=float(market_cap) if market_cap is not None else None,
