@@ -21,7 +21,14 @@ router = APIRouter()
 )
 async def get_stock(
     ticker: str,
+    period: str | None = None,
+    interval: str | None = None,
     stock_service: StockService = Depends(get_stock_service),
 ) -> StockResponse:
-    logger.info("Fetching stock data for ticker=%s", ticker)
-    return await stock_service.get_stock(ticker)
+    logger.info(
+        "Fetching stock data for ticker=%s period=%s interval=%s",
+        ticker,
+        period,
+        interval,
+    )
+    return await stock_service.get_stock(ticker, period=period, interval=interval)

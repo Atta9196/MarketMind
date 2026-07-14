@@ -1,10 +1,11 @@
 import { Link, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { WATCHLIST_REFRESH_INTERVAL_MS } from '../constants'
 import { useStock } from '../hooks/useStock'
-import { formatCurrency } from '../utils/formatters'
 import { normalizeTicker } from '../utils/ticker'
 import { formatLastUpdated, getMarketStatus } from '../utils/market'
 import CompanyLogo from '../components/CompanyLogo'
+import LivePriceBadge from '../components/LivePriceBadge'
 import StockDetailChart from '../charts/StockDetailChart'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -15,7 +16,11 @@ function formatExchangeSector(exchange, sector) {
 
 export default function StockDetail() {
   const { ticker = '' } = useParams()
-  const { data, loading, error, reload } = useStock(ticker)
+  const { data, loading, error, priceDirection, reload } = useStock(ticker, {
+    period: '5d',
+    interval: '15m',
+    refreshInterval: WATCHLIST_REFRESH_INTERVAL_MS,
+  })
   const normalizedTicker = normalizeTicker(ticker)
   const [lastUpdated, setLastUpdated] = useState(null)
   const marketStatus = getMarketStatus()
@@ -52,27 +57,31 @@ export default function StockDetail() {
     <div>
       <Link
         to="/watchlist"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#3b82f6] transition hover:text-[#60a5fa]"
+        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-[#3b82f6] transition hover:text-[#60a5fa] sm:mb-6"
       >
         <span aria-hidden="true">←</span> Back to Watchlist
       </Link>
 
-      <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex items-start gap-4">
-          <CompanyLogo ticker={data.ticker} size={48} />
-          <div>
-            <p className="text-2xl font-bold text-white">{data.ticker}</p>
-            <p className="mt-0.5 text-base font-medium text-white">
+      <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+          <CompanyLogo ticker={data.ticker} size={44} />
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-white sm:text-2xl">{data.ticker}</p>
+            <p className="mt-0.5 truncate text-sm font-medium text-white sm:text-base">
               {data.company_name?.replace(/\.$/, '') || data.ticker}
             </p>
-            <p className="mt-1 text-sm text-[#64748b]">
+            <p className="mt-1 text-xs text-[#64748b] sm:text-sm">
               {formatExchangeSector(data.company?.exchange, data.company?.sector)}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col items-start gap-2 lg:items-end">
-          <p className="text-3xl font-bold text-white">{formatCurrency(data.price)}</p>
+          <LivePriceBadge
+            price={data.price}
+            direction={priceDirection}
+            size="lg"
+          />
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <span
@@ -94,11 +103,11 @@ export default function StockDetail() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#1e293b] bg-[#0f172a]/40 px-4 py-6 sm:px-6">
+      <div className="rounded-xl border border-[#1e293b] bg-[#0b1220] px-2 py-4 sm:rounded-2xl sm:px-5 sm:py-6">
         <StockDetailChart history={data.history} />
       </div>
 
-      <p className="mt-6 text-center text-xs text-[#64748b]">
+      <p className="mt-5 px-1 text-center text-[11px] leading-relaxed text-[#64748b] sm:mt-6 sm:text-xs">
         All times are Eastern Time (ET) · Data provided by Yahoo Finance
       </p>
     </div>

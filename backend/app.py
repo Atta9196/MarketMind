@@ -44,7 +44,8 @@ _EXCEPTION_HANDLERS: list[tuple[type[Exception], int]] = [
     (InvalidTickerError, 400),
     (OptionsValidationError, 400),
     (TickerNotFoundError, 404),
-    (StockDataTimeoutError, 408),
+    # External Yahoo Finance failures (including timeouts) return HTTP 500.
+    (StockDataTimeoutError, 500),
     (StockServiceError, 500),
 ]
 

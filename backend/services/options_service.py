@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -8,17 +9,15 @@ from models.options_schemas import (
     ModelResult,
     OptionsCalculateRequest,
     OptionsCalculateResponse,
-    OptionStatus,
 )
 from services.stock_service import StockService
 from utils.options_pricing import (
     OptionsValidationError,
     binomial_tree_nodes,
-    binomial_tree_price,
     black_scholes_greeks,
     black_scholes_price,
     determine_option_status,
-    monte_carlo_price,
+    price_binomial_and_monte_carlo_parallel,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,7 +67,8 @@ class OptionsService:
             )
 
             binomial_start = time.perf_counter()
-            binomial_price = binomial_tree_price(
+            binomial_price, monte_carlo = await asyncio.to_thread(
+                price_binomial_and_monte_carlo_parallel,
                 spot_price=spot_price,
                 strike_price=request.strike_price,
                 time_to_expiration_years=time_years,
@@ -76,6 +76,9 @@ class OptionsService:
                 volatility=request.volatility,
                 option_type=request.option_type,
                 steps=steps,
+                simulations=self._settings.options_monte_carlo_simulations,
+                seed=self._settings.options_monte_carlo_seed,
+                workers=self._settings.options_worker_processes,
             )
             binomial_time = time.perf_counter() - binomial_start
 
@@ -88,19 +91,7 @@ class OptionsService:
                 ),
                 ModelResult(
                     model="Monte Carlo",
-                    price=round(
-                        monte_carlo_price(
-                            spot_price=spot_price,
-                            strike_price=request.strike_price,
-                            time_to_expiration_years=time_years,
-                            risk_free_rate=request.risk_free_rate,
-                            volatility=request.volatility,
-                            option_type=request.option_type,
-                            simulations=self._settings.options_monte_carlo_simulations,
-                            seed=self._settings.options_monte_carlo_seed,
-                        ),
-                        2,
-                    ),
+                    price=round(monte_carlo, 2),
                     status=status,
                 ),
             ]

@@ -9,6 +9,7 @@ import yfinance as yf
 from config import Settings
 from models.schemas import CompanyInfo, PricePoint, QuoteStats, StockResponse
 from utils.exceptions import (
+    InvalidTickerError,
     StockDataTimeoutError,
     StockServiceError,
     TickerNotFoundError,
@@ -17,6 +18,34 @@ from utils.ticker import validate_ticker
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_HISTORY_PERIODS = {
+    "1d",
+    "5d",
+    "1mo",
+    "3mo",
+    "6mo",
+    "1y",
+    "2y",
+    "5y",
+    "10y",
+    "ytd",
+    "max",
+}
+ALLOWED_HISTORY_INTERVALS = {
+    "1m",
+    "2m",
+    "5m",
+    "15m",
+    "30m",
+    "60m",
+    "90m",
+    "1h",
+    "1d",
+    "5d",
+    "1wk",
+    "1mo",
+}
+
 
 class StockService:
     """Fetches and normalizes stock market data from Yahoo Finance."""
@@ -24,12 +53,25 @@ class StockService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    async def get_stock(self, raw_ticker: str) -> StockResponse:
+    async def get_stock(
+        self,
+        raw_ticker: str,
+        *,
+        period: str | None = None,
+        interval: str | None = None,
+    ) -> StockResponse:
         ticker = validate_ticker(raw_ticker, self._settings)
+        history_period = self._resolve_history_period(period)
+        history_interval = self._resolve_history_interval(interval)
 
         try:
             stock_data = await asyncio.wait_for(
-                asyncio.to_thread(self._fetch_stock_data, ticker),
+                asyncio.to_thread(
+                    self._fetch_stock_data,
+                    ticker,
+                    history_period,
+                    history_interval,
+                ),
                 timeout=self._settings.yfinance_timeout_seconds,
             )
         except asyncio.TimeoutError as exc:
@@ -60,12 +102,37 @@ class StockService:
             history=stock_data["history"],
         )
 
-    def _fetch_stock_data(self, ticker: str) -> dict[str, Any]:
+    def _resolve_history_period(self, period: str | None) -> str:
+        if period is None:
+            return self._settings.history_period
+        normalized = period.strip().lower()
+        if normalized not in ALLOWED_HISTORY_PERIODS:
+            raise InvalidTickerError(
+                f"Unsupported history period '{period}'.",
+            )
+        return normalized
+
+    def _resolve_history_interval(self, interval: str | None) -> str:
+        if interval is None:
+            return self._settings.history_interval
+        normalized = interval.strip().lower()
+        if normalized not in ALLOWED_HISTORY_INTERVALS:
+            raise InvalidTickerError(
+                f"Unsupported history interval '{interval}'.",
+            )
+        return normalized
+
+    def _fetch_stock_data(
+        self,
+        ticker: str,
+        history_period: str,
+        history_interval: str,
+    ) -> dict[str, Any]:
         yf_ticker = yf.Ticker(ticker)
 
         history_frame = yf_ticker.history(
-            period=self._settings.history_period,
-            interval=self._settings.history_interval,
+            period=history_period,
+            interval=history_interval,
             auto_adjust=True,
         )
 

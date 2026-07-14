@@ -82,6 +82,39 @@ input[type='number'] {
   color: #6b7280;
 }
 
+.mm-date-field {
+  position: relative;
+}
+
+.mm-date-input {
+  color-scheme: dark;
+  padding-right: 2.75rem;
+}
+
+/* Hide the native calendar glyph; keep it clickable over our custom icon. */
+.mm-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.mm-date-icon {
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  right: 0.875rem;
+  z-index: 0;
+  height: 1.1rem;
+  width: 1.1rem;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
 .mm-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -193,6 +226,57 @@ select.mm-input {
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
 }
 
+.mm-live-price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1.5px solid #334155;
+  background-color: #0b1220;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.25;
+  transition:
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease;
+}
+
+.mm-live-price-lg {
+  border-radius: 10px;
+  padding: 0.4rem 0.85rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .mm-live-price-lg {
+    padding: 0.45rem 1rem;
+    font-size: 1.875rem;
+  }
+}
+
+.mm-live-price-up {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.08);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.28);
+}
+
+.mm-live-price-down {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.28);
+}
+
+.mm-live-price-flat {
+  border-color: #334155;
+  background-color: #0b1220;
+  box-shadow: none;
+}
+
 .mm-options-card {
   border-radius: 16px;
   border: 1px solid var(--color-mm-border);
@@ -220,8 +304,8 @@ select.mm-input {
 }
 
 .mm-status-badge.failed {
-  border-color: rgba(239, 68, 68, 0.5);
-  background-color: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.65);
+  background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
@@ -231,6 +315,22 @@ select.mm-input {
   color: #22c55e;
 }
 
+.mm-calc-failed-icon {
+  margin-inline: auto;
+  display: flex;
+  height: 5.5rem;
+  width: 5.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.mm-calc-failed-details {
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  background-color: rgba(239, 68, 68, 0.06);
+  padding: 1rem 1.1rem;
+}
+
 .mm-btn-recalculate {
   display: inline-flex;
   align-items: center;
@@ -238,9 +338,9 @@ select.mm-input {
   gap: 0.5rem;
   width: 100%;
   border-radius: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.6);
+  border: 1.5px solid #ef4444;
   background-color: transparent;
-  padding: 0.625rem 1.25rem;
+  padding: 0.7rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #ef4444;
@@ -268,12 +368,20 @@ select.mm-input {
 
 .mm-disclaimer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 0.75rem;
   border-radius: 12px;
   border: 1px solid rgba(59, 130, 246, 0.35);
   background-color: rgba(59, 130, 246, 0.06);
-  padding: 1rem 1.25rem;
-  text-align: center;
+  padding: 0.875rem 1rem;
+  text-align: left;
+}
+
+@media (min-width: 640px) {
+  .mm-disclaimer {
+    align-items: center;
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
 }

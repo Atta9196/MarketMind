@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     options_binomial_steps: int = Field(default=100, ge=1, le=1000)
     options_monte_carlo_simulations: int = Field(default=10_000, ge=100, le=1_000_000)
     options_monte_carlo_seed: int | None = Field(default=42)
+    options_worker_processes: int | None = Field(
+        default=None,
+        ge=1,
+        description="Process pool size for Binomial/Monte Carlo. Defaults to CPU count.",
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod

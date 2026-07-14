@@ -1,0 +1,29 @@
+# Render Blueprint — deploy from repo root (or set Root Directory to backend in the UI)
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: marketminds-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_NAME
+        value: MarketMinds API
+      - key: CORS_ORIGINS
+        sync: false
+      - key: YFINANCE_TIMEOUT_SECONDS
+        value: "20.0"
+      - key: OPTIONS_BINOMIAL_STEPS
+        value: "100"
+      - key: OPTIONS_MONTE_CARLO_SIMULATIONS
+        value: "10000"
+      - key: OPTIONS_MONTE_CARLO_SEED
+        value: "42"
+      - key: OPTIONS_WORKER_PROCESSES
+        value: "2"
+      - key: PYTHON_VERSION
+        value: "3.12.8"

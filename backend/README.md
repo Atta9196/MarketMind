@@ -16,20 +16,25 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
+copy .env.example .env   # Windows
+# cp .env.example .env   # macOS / Linux
+
 uvicorn app:app --reload --port 8000
 ```
 
-- API docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/api/health
+| Resource | URL |
+|----------|-----|
+| API docs | http://localhost:8000/docs |
+| Health check | http://localhost:8000/api/health |
 
 ## Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Service health check |
-| `GET` | `/api/stock/{ticker}` | Stock quote, profile, and history |
-| `POST` | `/api/options/calculate` | Options pricing (Black-Scholes, Binomial, Monte Carlo) |
+| `GET` | `/api/stock/{ticker}` | Stock quote, profile, and history (`period` / `interval` query params optional) |
+| `POST` | `/api/options/calculate` | Options pricing (Black-Scholes, Binomial, Monte Carlo with process pool) |
 
 ## Configuration
 
-Copy `.env.example` to `.env` and adjust as needed. See the [root README](../README.md#configuration) for all available variables.
+Copy `.env.example` to `.env` and adjust as needed. See the [root README Configuration section](../README.md#configuration) for all available variables.

@@ -109,14 +109,14 @@ export default function OptionsProcessingPanel({ loading, complete }) {
           : 'Running Monte Carlo simulation using multi-core processing.'}
       </p>
 
-      <div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid w-full grid-cols-2 gap-2 sm:mt-8 sm:grid-cols-4 sm:gap-3">
         {Array.from({ length: 4 }, (_, index) => (
           <div
             key={index}
-            className="flex flex-col items-center gap-2 rounded-lg border border-[#1e293b] bg-[#0f172a]/80 px-3 py-3"
+            className="flex flex-col items-center gap-2 rounded-lg border border-[#1e293b] bg-[#0f172a]/80 px-2 py-2.5 sm:px-3 sm:py-3"
           >
             <CoreDots count={index + 1} />
-            <span className="text-xs text-[#64748b]">Core {index + 1}</span>
+            <span className="text-[11px] text-[#64748b] sm:text-xs">Core {index + 1}</span>
           </div>
         ))}
       </div>
