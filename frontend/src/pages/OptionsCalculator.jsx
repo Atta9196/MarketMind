@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { DEFAULT_OPTION_TICKER } from '../constants'
 import { useOptionsCalculator } from '../hooks/useOptionsCalculator'
 import OptionsProcessingPanel from '../components/OptionsProcessingPanel'
+import CalculationInfoModal, { CalculationInfoButton } from '../components/CalculationInfoModal'
 import { CpuScalingIcon } from '../components/CpuChipIcon'
 
 const MONTE_CARLO_SIMULATIONS = 100_000
@@ -51,7 +52,10 @@ function formatErrorDetails(error, ticker) {
     normalized.includes('required') ||
     normalized.includes('must be') ||
     normalized.includes('greater than') ||
-    normalized.includes('between')
+    normalized.includes('at most') ||
+    normalized.includes('between') ||
+    normalized.includes('invalid characters') ||
+    normalized.includes('incomplete response')
   ) {
     return error
   }
@@ -110,6 +114,7 @@ export default function OptionsCalculator() {
   const [expirationDate, setExpirationDate] = useState(defaultExpirationDate)
   const [riskFreeRate, setRiskFreeRate] = useState('4.25')
   const [volatility, setVolatility] = useState('22.45')
+  const [infoOpen, setInfoOpen] = useState(false)
 
   useEffect(() => {
     const queryTicker = searchParams.get('ticker')
@@ -124,6 +129,13 @@ export default function OptionsCalculator() {
     () => Math.min(typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4, 4),
     [],
   )
+
+  const monteCarloPrice = useMemo(() => {
+    if (!hasResult) {
+      return null
+    }
+    return result.primary_price
+  }, [hasResult, result])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -149,13 +161,16 @@ export default function OptionsCalculator() {
   }
 
   const computationTime = hasResult
-    ? `${Math.max(result.binomial_meta.time_seconds, 0.001).toFixed(3)}s`
+    ? `${Math.max(result.computation_meta?.time_seconds ?? 0, 0.001).toFixed(3)}s`
     : '--'
 
   const resultRows = hasResult
     ? [
         ['Model Used', 'Monte Carlo'],
-        ['Simulations', MONTE_CARLO_SIMULATIONS.toLocaleString()],
+        [
+          'Simulations',
+          (result.computation_meta?.simulations ?? MONTE_CARLO_SIMULATIONS).toLocaleString(),
+        ],
         ['CPU Cores Used', String(cpuCores)],
         ['Computation Time', computationTime],
         ['Volatility (Annualized)', `${(result.volatility * 100).toFixed(2)}%`],
@@ -170,13 +185,30 @@ export default function OptionsCalculator() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white sm:text-[1.75rem]">
-        Options Pricing Engine
-      </h1>
-      <p className="mt-2 max-w-3xl text-sm text-[#94a3b8]">
-        Enter options parameters below to calculate the theoretical price using our
-        multi-core pricing engine
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-white sm:text-[1.75rem]">
+            Options Pricing Engine
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm text-[#94a3b8]">
+            Enter options parameters below to calculate the theoretical price using our
+            multi-core Monte Carlo pricing engine
+          </p>
+        </div>
+        <CalculationInfoButton onClick={() => setInfoOpen(true)} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#64748b]">
+        <span className="text-[#94a3b8]">Pricing model:</span>
+        <button
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          className="inline-flex items-center gap-1 rounded-md border border-[#1e293b] px-2 py-1 text-[#94a3b8] transition hover:border-[#334155] hover:text-white"
+        >
+          <span aria-hidden="true">ℹ️</span>
+          Monte Carlo
+        </button>
+      </div>
 
       <div className="mt-6 grid gap-4 sm:mt-8 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
         <div className="mm-options-card p-4 sm:p-6 lg:col-span-2 xl:col-span-1">
@@ -359,7 +391,7 @@ export default function OptionsCalculator() {
                 hasResult ? 'text-[#22c55e]' : 'text-white'
               }`}
             >
-              {hasResult ? `$${result.primary_price.toFixed(2)}` : '--'}
+              {hasResult && monteCarloPrice != null ? `$${monteCarloPrice.toFixed(2)}` : '--'}
             </p>
 
             {showError ? (
@@ -446,6 +478,11 @@ export default function OptionsCalculator() {
           All calculations are estimates based on real-time market data and model assumptions.
         </p>
       </div>
+
+      <CalculationInfoModal
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+      />
     </div>
   )
 }

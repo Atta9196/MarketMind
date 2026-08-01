@@ -24,13 +24,16 @@ class Settings(BaseSettings):
     ticker_min_length: int = Field(default=1, ge=1)
     ticker_max_length: int = Field(default=10, ge=1)
 
-    options_binomial_steps: int = Field(default=100, ge=1, le=1000)
     options_monte_carlo_simulations: int = Field(default=10_000, ge=100, le=1_000_000)
     options_monte_carlo_seed: int | None = Field(default=42)
     options_worker_processes: int | None = Field(
         default=None,
         ge=1,
-        description="Process pool size for Binomial/Monte Carlo. Defaults to CPU count.",
+        description="Process pool size for Monte Carlo. Defaults to CPU count.",
+    )
+    use_mock_data: bool = Field(
+        default=False,
+        description="When true, serve MOCK_* tickers from utils.mock_data instead of Yahoo Finance.",
     )
 
     @field_validator("cors_origins", mode="before")

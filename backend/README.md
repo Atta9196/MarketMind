@@ -33,7 +33,7 @@ uvicorn app:app --reload --port 8000
 |--------|------|-------------|
 | `GET` | `/api/health` | Service health check |
 | `GET` | `/api/stock/{ticker}` | Stock quote, profile, and history (`period` / `interval` query params optional) |
-| `POST` | `/api/options/calculate` | Options pricing (Black-Scholes, Binomial, Monte Carlo with process pool) |
+| `POST` | `/api/options/calculate` | Options pricing (Monte Carlo with process pool) |
 
 ## Configuration
 

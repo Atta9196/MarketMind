@@ -1,9 +1,12 @@
 # MarketMinds
 
-MarketMinds is a full-stack web application for live equity quotes, interactive price charts, and multi-model options valuation. It pairs a React frontend with a FastAPI backend that sources market data from Yahoo Finance and prices options using Black-Scholes, Binomial Tree, and parallel Monte Carlo simulation.
+MarketMinds is a full-stack web application for live equity quotes, interactive price charts, and Monte Carlo options valuation. It pairs a React frontend with a FastAPI backend that sources market data from Yahoo Finance and estimates theoretical option prices using parallel Monte Carlo simulation.
 
 > **Using the app as a client (non-technical)?**  
 > Start with the **[Client User Guide](./CLIENT_GUIDE.md)** — a step-by-step walkthrough from first launch to advanced options pricing.  
+>  
+> **Need a client-facing project summary?**  
+> See **[CLIENT_REPORT.txt](./CLIENT_REPORT.txt)** (product, Monte Carlo explanation, design decisions, performance, testing).  
 >  
 > **Need to install and run the project locally?**  
 > Follow the **[Setup & Run Guide](./SETUP_GUIDE.md)**.  
@@ -17,10 +20,11 @@ MarketMinds is a full-stack web application for live equity quotes, interactive 
 
 | Feature | Description |
 |---------|-------------|
-| **Live Watchlist** | Auto-refreshing quotes (every 15s) with green/red live price badges for up/down moves |
+| **Live Watchlist** | Auto-refreshing quotes (every 10s) with green/red live price badges for up/down moves |
 | **Stock Detail** | Company profile, live price badge, and an intraday area chart (5-day / 15-minute history) |
-| **Options Calculator** | Call/put pricing via Black-Scholes, Binomial Tree, and Monte Carlo, with ITM / OTM / Knocked Out status |
-| **Parallel Pricing** | Binomial and Monte Carlo workloads run across a CPU process pool and aggregate results on the main process |
+| **Options Calculator** | Call/put pricing with Monte Carlo simulation, ITM / OTM / Knocked Out status |
+| **Calculation Information** | Beginner-friendly explanation of Monte Carlo (Options screen modal) |
+| **Parallel Pricing** | Monte Carlo workloads can run across a CPU process pool |
 | **Failure States** | Structured error UI for options failures and a “No Connection” state when the API is unreachable |
 | **Responsive UI** | Dark, Figma-aligned layout optimized for mobile, tablet, and desktop |
 
@@ -124,7 +128,7 @@ The Vite development server proxies `/api` requests to `http://localhost:8000`, 
 |-------|-------------|
 | `/watchlist` | Default landing page — live market table |
 | `/stock/:ticker` | Stock detail with live price and intraday chart |
-| `/options` | Options pricing calculator |
+| `/options` | Options pricing calculator (Monte Carlo) |
 
 **Default watchlist tickers:** `AAPL`, `NVDA`, `AMZN`, `GOOGL`, `TSLA`, `META`, `NFLX`
 
@@ -157,7 +161,7 @@ curl "http://localhost:8000/api/stock/AAPL?period=5d&interval=15m"
 
 ### `POST /api/options/calculate`
 
-Prices an option with Black-Scholes, Binomial Tree, and Monte Carlo models. Returns theoretical prices, Greeks, moneyness status (`ITM`, `OTM`, or `Knocked Out`), and binomial metadata.
+Prices an option using Monte Carlo simulation (with supporting pricing metadata). Returns theoretical price, moneyness status (`ITM`, `OTM`, or `Knocked Out`), and computation metadata.
 
 ```bash
 curl -X POST http://localhost:8000/api/options/calculate \
@@ -198,10 +202,9 @@ Backend settings are loaded from environment variables or a `.env` file in `back
 | `HISTORY_INTERVAL` | `1d` | Default historical data interval |
 | `TICKER_MIN_LENGTH` | `1` | Minimum ticker symbol length |
 | `TICKER_MAX_LENGTH` | `10` | Maximum ticker symbol length |
-| `OPTIONS_BINOMIAL_STEPS` | `100` | Binomial tree steps |
 | `OPTIONS_MONTE_CARLO_SIMULATIONS` | `10000` | Monte Carlo simulation count |
 | `OPTIONS_MONTE_CARLO_SEED` | `42` | Optional RNG seed for reproducibility |
-| `OPTIONS_WORKER_PROCESSES` | CPU count | Process pool size for Binomial / Monte Carlo |
+| `OPTIONS_WORKER_PROCESSES` | CPU count | Process pool size for Monte Carlo / pricing workers |
 
 ---
 
@@ -227,7 +230,7 @@ uvicorn app:app --reload --port 8000
 ## Architecture Notes
 
 - **Stock data** is fetched via yfinance, normalized into Pydantic models, and returned as compact JSON for the web client.
-- **Options pricing** runs Black-Scholes on the request path; Binomial and Monte Carlo are dispatched to a multiprocessing pool, then aggregated (Monte Carlo payoffs averaged) before the response is returned.
+- **Options pricing** runs Monte Carlo simulation (process pool) and returns the theoretical price used by the Options Calculator UI.
 - **Frontend polling** refreshes watchlist and stock-detail prices on a fixed interval without blocking the UI thread.
 - **CORS** is configured for the Vite origin; adjust `CORS_ORIGINS` for other deployments.
 

@@ -4,8 +4,7 @@ import time
 
 from config import Settings
 from models.options_schemas import (
-    BinomialMeta,
-    Greeks,
+    ComputationMeta,
     ModelResult,
     OptionsCalculateRequest,
     OptionsCalculateResponse,
@@ -13,18 +12,15 @@ from models.options_schemas import (
 from services.stock_service import StockService
 from utils.options_pricing import (
     OptionsValidationError,
-    binomial_tree_nodes,
-    black_scholes_greeks,
-    black_scholes_price,
     determine_option_status,
-    price_binomial_and_monte_carlo_parallel,
+    monte_carlo_price,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class OptionsService:
-    """Prices options using multiple quantitative models."""
+    """Prices options using Monte Carlo simulation."""
 
     def __init__(self, settings: Settings, stock_service: StockService) -> None:
         self._settings = settings
@@ -33,7 +29,14 @@ class OptionsService:
     async def calculate(self, request: OptionsCalculateRequest) -> OptionsCalculateResponse:
         stock = await self._stock_service.get_stock(request.ticker)
         spot_price = stock.price
+
+        if spot_price is None or spot_price != spot_price or spot_price <= 0:
+            raise OptionsValidationError(
+                f"Unable to price options for '{request.ticker}' because the spot price is missing or invalid.",
+            )
+
         time_years = request.time_to_expiration_days / 365.0
+        simulations = self._settings.options_monte_carlo_simulations
 
         status = determine_option_status(
             spot_price=spot_price,
@@ -42,56 +45,27 @@ class OptionsService:
             time_to_expiration_years=time_years,
         )
 
-        steps = self._settings.options_binomial_steps
-
         try:
-            primary_price = round(
-                black_scholes_price(
-                    spot_price=spot_price,
-                    strike_price=request.strike_price,
-                    time_to_expiration_years=time_years,
-                    risk_free_rate=request.risk_free_rate,
-                    volatility=request.volatility,
-                    option_type=request.option_type,
-                ),
-                2,
-            )
-
-            greek_values = black_scholes_greeks(
+            started = time.perf_counter()
+            price = await asyncio.to_thread(
+                monte_carlo_price,
                 spot_price=spot_price,
                 strike_price=request.strike_price,
                 time_to_expiration_years=time_years,
                 risk_free_rate=request.risk_free_rate,
                 volatility=request.volatility,
                 option_type=request.option_type,
-            )
-
-            binomial_start = time.perf_counter()
-            binomial_price, monte_carlo = await asyncio.to_thread(
-                price_binomial_and_monte_carlo_parallel,
-                spot_price=spot_price,
-                strike_price=request.strike_price,
-                time_to_expiration_years=time_years,
-                risk_free_rate=request.risk_free_rate,
-                volatility=request.volatility,
-                option_type=request.option_type,
-                steps=steps,
-                simulations=self._settings.options_monte_carlo_simulations,
+                simulations=simulations,
                 seed=self._settings.options_monte_carlo_seed,
                 workers=self._settings.options_worker_processes,
             )
-            binomial_time = time.perf_counter() - binomial_start
+            elapsed = time.perf_counter() - started
+            primary_price = round(price, 2)
 
             results = [
-                ModelResult(model="Black-Scholes", price=primary_price, status=status),
-                ModelResult(
-                    model="Binomial Tree",
-                    price=round(binomial_price, 2),
-                    status=status,
-                ),
                 ModelResult(
                     model="Monte Carlo",
-                    price=round(monte_carlo, 2),
+                    price=primary_price,
                     status=status,
                 ),
             ]
@@ -116,11 +90,9 @@ class OptionsService:
             option_type=request.option_type,
             status=status,
             primary_price=primary_price,
-            greeks=Greeks(**greek_values),
-            binomial_meta=BinomialMeta(
-                steps=steps,
-                nodes=binomial_tree_nodes(steps),
-                time_seconds=round(binomial_time, 2),
+            computation_meta=ComputationMeta(
+                simulations=simulations,
+                time_seconds=round(elapsed, 2),
             ),
             results=results,
         )

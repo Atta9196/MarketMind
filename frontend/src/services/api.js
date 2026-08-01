@@ -21,6 +21,18 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+      return Promise.reject(
+        new Error('The request timed out. Please check your connection and try again.'),
+      )
+    }
+
+    if (!error.response) {
+      return Promise.reject(
+        new Error('Unable to reach the MarketMinds API. Please check your connection and try again.'),
+      )
+    }
+
     const detail = error.response?.data?.detail
     let message = error.message || 'An unexpected error occurred'
 
@@ -28,6 +40,10 @@ api.interceptors.response.use(
       message = detail
     } else if (Array.isArray(detail)) {
       message = detail.map((item) => item.msg).join('. ')
+    } else if (error.response.status === 404) {
+      message = 'The requested ticker or resource was not found.'
+    } else if (error.response.status >= 500) {
+      message = 'Market data is temporarily unavailable. Please try again shortly.'
     }
 
     return Promise.reject(new Error(message))

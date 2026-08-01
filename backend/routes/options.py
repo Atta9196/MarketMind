@@ -17,7 +17,7 @@ router = APIRouter()
     response_model=OptionsCalculateResponse,
     responses=API_ERROR_RESPONSES,
     summary="Calculate option prices",
-    description="Prices an option using Black-Scholes, Binomial Tree, and Monte Carlo models.",
+    description="Prices an option using Monte Carlo simulation.",
 )
 async def calculate_options(
     payload: OptionsCalculateRequest,

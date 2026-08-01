@@ -77,6 +77,11 @@ class StockService:
         history_period = self._resolve_history_period(period)
         history_interval = self._resolve_history_interval(interval)
 
+        if self._settings.use_mock_data:
+            mock_response = self._build_mock_stock_response(ticker)
+            if mock_response is not None:
+                return mock_response
+
         try:
             stock_data = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -113,6 +118,45 @@ class StockService:
             quote=stock_data["quote"],
             company=stock_data["company"],
             history=stock_data["history"],
+        )
+
+    def _build_mock_stock_response(self, ticker: str) -> StockResponse | None:
+        from utils.mock_data import get_mock_quote
+
+        quote = get_mock_quote(ticker)
+        if quote is None:
+            return None
+
+        closes = quote.get("history_closes") or [quote["price"]]
+        history = [
+            PricePoint(
+                timestamp=datetime.now(UTC).isoformat(),
+                open=float(close),
+                high=float(close),
+                low=float(close),
+                close=float(close),
+                volume=0,
+            )
+            for close in closes
+            if close is not None and close == close
+        ]
+
+        price = float(quote["price"])
+        return StockResponse(
+            ticker=quote["ticker"],
+            company_name=quote["company_name"],
+            price=round(price, 4),
+            daily_change=float(quote.get("daily_change") or 0.0),
+            daily_change_percent=float(quote.get("daily_change_percent") or 0.0),
+            quote=QuoteStats(
+                open=price,
+                high=price,
+                low=price,
+                close=price,
+                volume=0,
+            ),
+            company=CompanyInfo(sector="Mock", industry="Testing"),
+            history=history,
         )
 
     def _resolve_history_period(self, period: str | None) -> str:
