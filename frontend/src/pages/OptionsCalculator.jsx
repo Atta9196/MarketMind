@@ -8,6 +8,13 @@ import { CpuScalingIcon } from '../components/CpuChipIcon'
 
 const MONTE_CARLO_SIMULATIONS = 100_000
 
+const GREEK_DEFINITIONS = {
+  Delta: 'Measures how much the option price may change when the stock price changes by $1.',
+  Gamma: 'Measures how quickly Delta changes when the stock price changes by $1.',
+  Theta: 'Measures the estimated daily change in the option price as time passes.',
+  Vega: 'Measures how much the option price may change for a 1% change in volatility.',
+}
+
 function CalculatorIcon({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -34,6 +41,20 @@ function SectionLabel({ children }) {
 
 function FieldHint({ children }) {
   return <p className="mt-1.5 text-xs text-[#64748b]">{children}</p>
+}
+
+function GreekInfoButton({ name, expanded, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[#64748b] transition hover:text-white"
+      aria-label={`About ${name}`}
+      aria-expanded={expanded}
+    >
+      <span aria-hidden="true">ⓘ</span>
+    </button>
+  )
 }
 
 function formatErrorDetails(error, ticker) {
@@ -115,6 +136,7 @@ export default function OptionsCalculator() {
   const [riskFreeRate, setRiskFreeRate] = useState('4.25')
   const [volatility, setVolatility] = useState('22.45')
   const [infoOpen, setInfoOpen] = useState(false)
+  const [expandedGreek, setExpandedGreek] = useState(null)
 
   useEffect(() => {
     const queryTicker = searchParams.get('ticker')
@@ -182,6 +204,13 @@ export default function OptionsCalculator() {
         ['Computation Time', '--'],
         ['Volatility (Annualized)', '--'],
       ]
+
+  const greekRows = [
+    ['Delta', hasResult ? result.greeks?.delta?.toFixed(4) ?? '--' : '--'],
+    ['Gamma', hasResult ? result.greeks?.gamma?.toFixed(4) ?? '--' : '--'],
+    ['Theta', hasResult ? result.greeks?.theta?.toFixed(4) ?? '--' : '--'],
+    ['Vega', hasResult ? result.greeks?.vega?.toFixed(4) ?? '--' : '--'],
+  ]
 
   return (
     <div>
@@ -420,6 +449,28 @@ export default function OptionsCalculator() {
                 >
                   <span className="text-[#64748b]">{label}</span>
                   <span className="font-medium text-white">{value}</span>
+                </div>
+              ))}
+              {greekRows.map(([label, value]) => (
+                <div key={label}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="inline-flex items-center text-[#64748b]">
+                      {label}
+                      <GreekInfoButton
+                        name={label}
+                        expanded={expandedGreek === label}
+                        onClick={() =>
+                          setExpandedGreek((current) => (current === label ? null : label))
+                        }
+                      />
+                    </span>
+                    <span className="font-medium text-white">{value}</span>
+                  </div>
+                  {expandedGreek === label ? (
+                    <p className="mt-1 text-xs leading-relaxed text-[#94a3b8]">
+                      {GREEK_DEFINITIONS[label]}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>

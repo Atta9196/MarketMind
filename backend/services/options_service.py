@@ -5,6 +5,7 @@ import time
 from config import Settings
 from models.options_schemas import (
     ComputationMeta,
+    Greeks,
     ModelResult,
     OptionsCalculateRequest,
     OptionsCalculateResponse,
@@ -12,6 +13,7 @@ from models.options_schemas import (
 from services.stock_service import StockService
 from utils.options_pricing import (
     OptionsValidationError,
+    calculate_greeks,
     determine_option_status,
     monte_carlo_price,
 )
@@ -61,6 +63,14 @@ class OptionsService:
             )
             elapsed = time.perf_counter() - started
             primary_price = round(price, 2)
+            greek_values = calculate_greeks(
+                spot_price=spot_price,
+                strike_price=request.strike_price,
+                time_to_expiration_years=time_years,
+                risk_free_rate=request.risk_free_rate,
+                volatility=request.volatility,
+                option_type=request.option_type,
+            )
 
             results = [
                 ModelResult(
@@ -90,6 +100,7 @@ class OptionsService:
             option_type=request.option_type,
             status=status,
             primary_price=primary_price,
+            greeks=Greeks(**greek_values),
             computation_meta=ComputationMeta(
                 simulations=simulations,
                 time_seconds=round(elapsed, 2),

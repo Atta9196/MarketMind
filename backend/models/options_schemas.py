@@ -65,6 +65,13 @@ class ComputationMeta(BaseModel):
     time_seconds: float
 
 
+class Greeks(BaseModel):
+    delta: float
+    gamma: float
+    theta: float
+    vega: float
+
+
 class ModelResult(BaseModel):
     model: str = Field(..., description="Pricing model name.")
     price: float = Field(..., description="Calculated option price.")
@@ -81,5 +88,6 @@ class OptionsCalculateResponse(BaseModel):
     option_type: OptionType
     status: OptionStatus
     primary_price: float
+    greeks: Greeks
     computation_meta: ComputationMeta
     results: list[ModelResult]

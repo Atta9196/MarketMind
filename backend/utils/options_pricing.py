@@ -85,6 +85,58 @@ def determine_option_status(
     return OptionStatus.OTM
 
 
+def calculate_greeks(
+    spot_price: float,
+    strike_price: float,
+    time_to_expiration_years: float,
+    risk_free_rate: float,
+    volatility: float,
+    option_type: OptionType | str,
+) -> dict[str, float]:
+    """Calculate standard option sensitivities without changing the pricing engine."""
+    from math import erf, exp, log, pi, sqrt
+
+    spot, strike, time_years, rate, vol = validate_pricing_inputs(
+        spot_price,
+        strike_price,
+        time_to_expiration_years,
+        risk_free_rate,
+        volatility,
+    )
+
+    if time_years <= 0:
+        return {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0}
+
+    sqrt_t = sqrt(time_years)
+    d1 = (
+        log(spot / strike) + (rate + 0.5 * vol**2) * time_years
+    ) / (vol * sqrt_t)
+    d2 = d1 - vol * sqrt_t
+    discount = exp(-rate * time_years)
+
+    def normal_cdf(value: float) -> float:
+        return 0.5 * (1.0 + erf(value / sqrt(2.0)))
+
+    normal_pdf_d1 = exp(-0.5 * d1**2) / sqrt(2.0 * pi)
+    is_call = _is_call(option_type)
+    delta = normal_cdf(d1) if is_call else normal_cdf(d1) - 1.0
+    gamma = normal_pdf_d1 / (spot * vol * sqrt_t)
+    theta_rate_term = (
+        -rate * strike * discount * normal_cdf(d2)
+        if is_call
+        else rate * strike * discount * normal_cdf(-d2)
+    )
+    theta = (-(spot * normal_pdf_d1 * vol) / (2.0 * sqrt_t) + theta_rate_term) / 365.0
+    vega = spot * normal_pdf_d1 * sqrt_t / 100.0
+
+    return {
+        "delta": round(delta, 4),
+        "gamma": round(gamma, 4),
+        "theta": round(theta, 4),
+        "vega": round(vega, 4),
+    }
+
+
 def _monte_carlo_payoffs_chunk(payload: dict[str, Any]) -> list[float]:
     """Generate one worker's Monte Carlo payoff paths (picklable for ProcessPool)."""
     import numpy as np
